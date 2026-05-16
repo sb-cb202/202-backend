@@ -41,7 +41,7 @@ app.get("/todos", async (req, res) => {
 // CREATE (POST)
 app.post("/create-todo", async (req, res) => {  
     try {
-        // 1. GET existing reminders
+        // 1. GET existing todos
         const getResponse = await fetch(process.env.JSONBIN_URL, {
             method: "GET",
             headers: {
@@ -52,11 +52,17 @@ app.post("/create-todo", async (req, res) => {
 
         const getData = await getResponse.json()
 
-        // 2. Append new reminder to existing array
-        const existingReminders = getData.record.reminders || []
-        const updatedReminders = [...existingReminders, req.body]
+        // 2. Auto increment ID
+        const existingTodos = getData.record.todos || []
+        const nextId = existingTodos.length > 0 
+            ? Math.max(...existingTodos.map(t => t.id)) + 1 
+            : 1
 
-        // 3. PUT the full updated array back
+        // 3. Append new todo with auto incremented ID
+        const newTodo = { id: nextId, ...req.body }
+        const updatedTodos = [...existingTodos, newTodo]
+
+        // 4. PUT the full updated array back
         const putResponse = await fetch(process.env.JSONBIN_URL, { 
             method: "PUT",
             headers: {
@@ -64,7 +70,7 @@ app.post("/create-todo", async (req, res) => {
                 "X-Master-Key": process.env.JSONBIN_MASTER_KEY,
                 "X-Access-Key": process.env.JSONBIN_ACCESS_KEY
             },
-            body: JSON.stringify({ reminders: updatedReminders })
+            body: JSON.stringify({ todos: updatedTodos })
         })
 
         const data = await putResponse.json()
@@ -83,10 +89,10 @@ app.post("/create-todo", async (req, res) => {
 
 // What a typical POST request would look like:
 // --------------------------------------------
-// app.post("/create-reminder", async (req, res) => {
+// app.post("/create-todo", async (req, res) => {
 //     try {
 //         const response = await fetch(URL, {
-//             method: "PUT",
+//             method: "POST",
 //             headers: {
 //                 "Content-Type": "application/json",
 //                 "X-Master-Key": process.env.JSONBIN_MASTER_KEY,
@@ -123,9 +129,9 @@ app.delete("/delete-todo/:id", async (req, res) => {
 
         const getData = await getResponse.json()
 
-        // 2. Filter out the reminder with the matching ID
+        // 2. Filter out the todo with the matching ID
         const existingTodos = getData.record.todos || []
-        const updatedReminders = existingTodos.filter(r => r.id !== req.params.id)
+        const updatedTodos = existingTodos.filter(r => String(r.id) !== req.params.id)
 
         // 3. PUT the updated array back
         const putResponse = await fetch(process.env.JSONBIN_URL, {
@@ -135,7 +141,7 @@ app.delete("/delete-todo/:id", async (req, res) => {
                 "X-Master-Key": process.env.JSONBIN_MASTER_KEY,
                 "X-Access-Key": process.env.JSONBIN_ACCESS_KEY
             },
-            body: JSON.stringify({ todos: updatedReminders })
+            body: JSON.stringify({ todos: updatedTodos })
         })
 
         const data = await putResponse.json()
@@ -146,7 +152,7 @@ app.delete("/delete-todo/:id", async (req, res) => {
         })
     } catch (error) {
         res.status(500).json({
-            message: "Error deleting reminder",
+            message: "Error deleting todo",
             error: error.message
         })
     }
